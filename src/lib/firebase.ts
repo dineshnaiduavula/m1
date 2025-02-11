@@ -4,15 +4,14 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyDpHI8ITLqJ4NCllmRl8XjD3Cqmza2yeUM',
-  authDomain: 'keepcallings.firebaseapp.com',
-  databaseURL:
-    'https://keepcallings-default-rtdb.asia-southeast1.firebasedatabase.app',
-  projectId: 'keepcallings',
-  storageBucket: 'keepcallings.appspot.com',
-  messagingSenderId: '286050839087',
-  appId: '1:286050839087:web:5ffbb8020c6e20612e34da',
-  measurementId: 'G-PMDNE4BJZF',
+  apiKey: "AIzaSyAiav-Ek4IHBEjuF59aBx06WG3IEOnTaAM",
+  authDomain: "movie-fbd7f.firebaseapp.com",
+  databaseURL: "https://movie-fbd7f-default-rtdb.firebaseio.com",
+  projectId: "movie-fbd7f",
+  storageBucket: "movie-fbd7f.firebasestorage.app",
+  messagingSenderId: "706053708272",
+  appId: "1:706053708272:web:cc34af611cedb0a47b2535",
+  measurementId: "G-Q0XSZGW8N7"
 };
 
 const app = initializeApp(firebaseConfig);
