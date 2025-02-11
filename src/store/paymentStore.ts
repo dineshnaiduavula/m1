@@ -2,7 +2,6 @@ import create from 'zustand';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
-
 interface PaymentState {
   loading: boolean;
   error: string | null;
@@ -14,7 +13,6 @@ interface PaymentState {
 export const usePaymentStore = create<PaymentState>((set) => ({
   loading: false,
   error: null,
-
 
   createOrder: async (amount: number, receipt: string) => {
     try {
