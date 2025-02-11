@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect ,useRef} from 'react';
 import { collection, query, where, getDocs, updateDoc, doc, onSnapshot } from 'firebase/firestore';
+import {  addDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { Printer, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { playNotificationSound } from '../../utils/sound';
 import { calculateTaxes } from '../../utils/calculateTaxes';
+import { usePaymentStore } from '../../store/paymentStore';
+
 
 interface Order {
   id: string;
@@ -23,39 +26,158 @@ interface Order {
 }
 
 function OrderManagement() {
-  const [orders, setOrders] = useState<Order[]>([]);
+const isFirstRender = useRef(true);
   const [previousOrderCount, setPreviousOrderCount] = useState(0);
+  const { fetchPaymentDetails,checkPaymentStatus} = usePaymentStore();
+  const [orders, setOrders] = useState([]);
+  
+  // const checkAndUpdatePayments = async () => {
+  //   try {
+  //     const ordersRef = collection(db, "transactions");
+  //     const snapshot = await getDocs(ordersRef);
+
+  //     for (const order of snapshot.docs) {
+  //       const data = order.data();
+
+  //       if (data.status === "pending") {
+  //         console.log(2);
+  //         const result = await checkPaymentStatus(data.orderId);
+  //         if (result.status === "captured") {
+  //           const itemsTotal = data.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  //         const gstAmount = itemsTotal * 0.04;  // 4% GST
+  //         const totalAmount = itemsTotal + gstAmount;
+
+  //           await updateDoc(doc(db, "transactions", order.id), {
+  //             status: "success",
+  //             verified: true,
+  //             updatedAt: new Date().toISOString(),
+  //           });
+
+  //           console.log(1);
+  //           console.log(result);
+  //           await addDoc(collection(db, "orders"), {
+  //             items: data.items,
+  //             total:totalAmount,
+  //             customerName: data.customerName,
+  //             customerPhone: data.customerPhone,
+  //             seatNumber: data.seatNumber,
+  //             status: "pending",
+  //             receipt: data.receipt,
+  //             screen: data.screen,
+  //             orderId: result.id,
+  //             createdAt: new Date().toISOString(),
+  //           });
+  //         } else {
+  //           console.log(`Payment still pending for order: ${data.orderId}`);
+  //         }
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error("Error updating payments:", error);
+  //     toast.error("Failed to update payments");
+  //   }
+  // };
+
+  const checkAndUpdatePayments = async () => {
+    try {
+        const ordersRef = collection(db, "transactions");
+        const snapshot = await getDocs(ordersRef);
+
+        for (const order of snapshot.docs) {
+            const data = order.data();
+
+            if (data.status === "pending") {
+                console.log(2);
+                const result = await checkPaymentStatus(data.orderId);
+                if (result.status === "captured") {
+                    const itemsTotal = data.items.reduce(
+                        (sum, item) => sum + item.price * item.quantity, 0
+                    );
+                    const gstAmount = itemsTotal * 0.04;  // 4% GST
+                    const totalAmount = itemsTotal + gstAmount;
+
+                    // Check if the order already exists in the 'orders' collection
+                    const ordersQuery = query(
+                        collection(db, "orders"),
+                        where("orderId", "==", result.id)
+                    );
+                    console.log(ordersQuery)
+                    const existingOrderSnapshot = await getDocs(ordersQuery);
+
+                    if (existingOrderSnapshot.empty) {
+                        // No existing order with this orderId, so proceed with adding it
+                        await updateDoc(doc(db, "transactions", order.id), {
+                            status: "success",
+                            verified: true,
+                            updatedAt: new Date().toISOString(),
+                        });
+
+                        console.log(1);
+                        console.log(result);
+
+                        await addDoc(collection(db, "orders"), {
+                            items: data.items,
+                            total: totalAmount,
+                            customerName: data.customerName,
+                            customerPhone: data.customerPhone,
+                            seatNumber: data.seatNumber,
+                            status: "pending",
+                            receipt: data.receipt,
+                            screen: data.screen,
+                            orderId: result.id,  // Unique identifier for the order
+                            createdAt: new Date().toISOString(),
+                        });
+                    } else {
+                        console.log(`Order with orderId ${result.id} already exists, skipping insert.`);
+                    }
+                } else {
+                    console.log(`Payment still pending for order: ${data.orderId}`);
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Error updating payments:", error);
+        toast.error("Failed to update payments");
+    }
+};
+
 
   useEffect(() => {
-    let isFirstRender = true;
-    const q = query(
-      collection(db, 'orders'),
-      where('status', '==', 'pending')
+    const q = query(collection(db, "orders"), where("status", "==", "pending"));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const fetchedOrders = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Order[];
+
+        const sortedOrders = fetchedOrders.sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
+        if (!isFirstRender.current && sortedOrders.length > previousOrderCount) {
+          playNotificationSound();
+        }
+        isFirstRender.current = false;
+        setPreviousOrderCount(sortedOrders.length);
+        setOrders(sortedOrders);
+      },
+      (error) => {
+        toast.error("Failed to fetch orders");
+        console.error("Error fetching orders:", error);
+      }
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedOrders: Order[] = [];
-      snapshot.forEach((doc) => {
-        fetchedOrders.push({ id: doc.id, ...doc.data() } as Order);
-      });
-      
-      const sortedOrders = fetchedOrders.sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-
-      if (!isFirstRender && sortedOrders.length > previousOrderCount) {
-        playNotificationSound();
-      }
-      isFirstRender = false;
-      setPreviousOrderCount(sortedOrders.length);
-      setOrders(sortedOrders);
-    }, (error) => {
-      toast.error('Failed to fetch orders');
-      console.error('Error fetching orders:', error);
-    });
+    // Run only once on mount
+    if (isFirstRender.current) {
+      console.log(9)
+      checkAndUpdatePayments();
+    }
 
     return () => unsubscribe();
-  }, [previousOrderCount]);
+  },  [previousOrderCount]  ); 
+
 
   const handlePrint = (order: Order) => {
     const subtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -143,6 +265,7 @@ ${order.items
   };
 
   return (
+    
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-900">Active Orders</h2>
       
