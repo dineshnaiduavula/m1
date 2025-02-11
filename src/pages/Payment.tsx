@@ -92,6 +92,7 @@ function Payment() {
         customerName: name,
         customerPhone: phone,
         seatNumber,
+        screen:screen,
         status: 'pending',
         items: cart,
         createdAt: new Date().toISOString(),
@@ -110,7 +111,7 @@ function Payment() {
         order_id: order.id,
         prefill: {
           name,
-          contact: phone
+          contact: phone 
         },
         handler: async function (response: any) {
           try {
