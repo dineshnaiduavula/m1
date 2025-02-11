@@ -92,7 +92,7 @@ function Payment() {
         customerName: name,
         customerPhone: phone,
         seatNumber,
-        screen:screen,
+       // screen:screen,
         status: 'pending',
         items: cart,
         createdAt: new Date().toISOString(),
