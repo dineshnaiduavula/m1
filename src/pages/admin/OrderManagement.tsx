@@ -144,8 +144,9 @@ const isFirstRender = useRef(true);
 const checkAndUpdatePayments = async () => {
     try {
         // Get transactions that are pending and not processed yet
-        const ordersRef = collection(db, "transactions");
-        const queryRef = query(ordersRef, where("status", "==", "pending"));
+        // const ordersRef = collection(db, "transactions");
+        // const queryRef = query(ordersRef, where("status", "==", "pending"));
+      const queryRef=query(collection(db,"transactions"),where("status", "==", "pending"))
         const snapshot = await getDocs(queryRef);
 
         for (const order of snapshot.docs) {
